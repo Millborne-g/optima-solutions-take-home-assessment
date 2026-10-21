@@ -1,0 +1,28 @@
+---
+description: React 19 and TypeScript 6 conventions for this codebase
+globs: "**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# React and TypeScript
+
+## Stack conventions
+
+- React 19 functional components with explicit prop types
+- Do not use `React.FC`
+- Avoid `any` unless justified in a comment
+- No `enum` — TypeScript `erasableSyntaxOnly` requires const maps / union types
+- Path alias: `@/` → `src/`
+
+## Patterns in this project
+
+- Lift Tiptap `useEditor` to the page (e.g. `EditorPage`); pass `editor` into presentational components
+- Use `immediatelyRender: false` with Tiptap + React 19
+- Normalize stored editor JSON with `normalizeTiptapContent` / `EMPTY_TIPTAP_DOC` before `setContent`
+- Handle loading, error, empty, and success UI where data is fetched
+- Preserve existing behavior when editing components
+
+## After changes
+
+- Prefer existing hooks and utilities over new abstractions
+- Verify types via `npm run build` (`tsc -b && vite build`) and run `npm test` when logic changes

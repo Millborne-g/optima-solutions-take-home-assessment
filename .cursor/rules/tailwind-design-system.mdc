@@ -1,0 +1,28 @@
+---
+description: Tailwind CSS v4 Sage Green theme tokens and light/dark mode styling
+globs: "**/*.{tsx,css}"
+alwaysApply: false
+---
+
+# Tailwind and Design System
+
+## Setup (already in place)
+
+- Tailwind CSS v4 via `@tailwindcss/vite` — no `tailwind.config.ts`
+- Tokens live in `src/app/index.css` (`@theme` + `.dark` overrides)
+- Class-based dark mode: `@custom-variant dark` + `.dark` on `<html>`
+- Theme state: `ThemeProvider` / `useTheme` in `src/app/theme.tsx`; `ThemeToggle` in shared UI
+- Anti-flash script in `index.html`; preference in `localStorage` key `theme`
+
+## Styling rules
+
+- Prefer semantic utilities: `bg-primary`, `bg-background`, `bg-surface`, `text-foreground`, `text-muted`, `border-border`
+- Avoid hardcoded hex/rgb in components when a token exists
+- Avoid arbitrary values when theme tokens cover the need
+- Merge classes with `cn()` from `shared/lib/cn.ts`
+- Keep custom CSS minimal: Tiptap `.ProseMirror` and `.editor-canvas` stay in global CSS
+- Do not add another CSS framework or revive CSS Modules without justification
+
+## Accessibility
+
+- Preserve focus rings, contrast in both themes, and keyboard-usable controls

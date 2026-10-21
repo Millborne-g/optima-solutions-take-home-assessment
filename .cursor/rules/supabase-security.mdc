@@ -1,0 +1,40 @@
+---
+description: Supabase RLS, document ownership/sharing, and secret-handling requirements
+alwaysApply: true
+---
+
+# Supabase Security and RLS
+
+## Non-negotiables
+
+- Keep RLS enabled on `profiles`, `documents`, and `document_shares`
+- Never disable RLS to fix a query failure
+- Never put service-role keys or secrets in frontend code or commits
+- Never log or commit `.env` / credentials
+- Do not run destructive SQL or reset the DB without explicit user approval
+- Inspect `supabase/migrations/001_initial_schema.sql` before changing policies
+
+## Permission model
+
+| Action | Who |
+|---|---|
+| Read | Owner or shared user |
+| Create | Authenticated user as owner (`owner_id = auth.uid()`) |
+| Update | Owner or share with `permission = 'edit'` |
+| Delete | Owner only |
+| Manage shares | Owner only |
+
+- Users must not escalate permissions or reassign ownership via client updates
+- Private docs must stay inaccessible to unrelated users
+
+## Cross-table policies
+
+- Direct `documents` ↔ `document_shares` subqueries in RLS caused infinite recursion
+- Use existing `SECURITY DEFINER` helpers: `is_document_owner`, `has_document_share`
+- Review `USING` and `WITH CHECK` for SELECT/INSERT/UPDATE/DELETE
+
+## Verification
+
+- Frontend UI checks are not authorization
+- Do not claim RLS is verified without evidence (tests, SQL checks, or two-user manual tests)
+- Prefer the `supabase-rls-security` skill for policy work

@@ -1,0 +1,31 @@
+---
+description: Feature-Sliced Design layers, import direction, and placement conventions for Docsync
+alwaysApply: true
+---
+
+# Project Architecture (FSD)
+
+Layer order (higher may import lower; never reverse):
+
+`app → pages → widgets → features → entities → shared`
+
+## Placement
+
+- `app/` — providers, router, theme, global CSS
+- `pages/` — route composition only
+- `widgets/` — composite UI (sidebar, editor layout)
+- `features/` — user actions (auth, create, rename, edit, share, import)
+- `entities/` — domain types, `*Api.ts`, domain UI (e.g. DocumentCard)
+- `shared/` — Supabase client, UI primitives, lib utilities
+
+## Rules
+
+- No circular dependencies; no cross-feature imports
+- Encapsulate Supabase I/O in `entities/**/model/*Api.ts`
+- Reuse existing shared components and entity APIs before adding new ones
+- Inspect relevant files before architectural changes; do not restructure wholesale
+- Prefer small, reviewable diffs scoped to the requested task
+
+## Accepted exception
+
+`shared/ui/ThemeToggle` imports `useTheme` from `app/theme`. Do not "fix" this by forcing a large restructure unless asked.

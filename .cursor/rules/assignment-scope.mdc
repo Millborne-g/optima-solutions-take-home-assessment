@@ -1,0 +1,29 @@
+---
+description: Ajaia assignment core scope, deliverables, and workflow guardrails
+alwaysApply: true
+---
+
+# Assignment Scope and Deliverables
+
+## Core product (Docsync)
+
+- Create, rename, edit, auto-save, reopen documents
+- Rich text: bold, italic, underline, headings, lists
+- Import `.md` / `.txt` (≤ 5 MB)
+- Ownership + sharing between users; persist in Supabase
+- Authorization via RLS; at least one meaningful automated test suite
+
+## Required submission files
+
+`README.md`, `ARCHITECTURE.md`, `AI_WORKFLOW.md`, `SUBMISSION.md`, `LIVE_URL.txt`, `WALKTHROUGH_URL.txt`, plus walkthrough video when ready.
+
+## Workflow preferences
+
+- Inspect existing code before proposing changes
+- Plan substantial work before implementing
+- Keep changes scoped; no unrelated features for polish alone
+- Do not commit, push, or deploy unless explicitly asked
+- Do not invent features, test results, or verification claims
+- Distinguish **Complete / Partial / Missing / Failed / Not Verified** when auditing
+
+Use `assignment-completion-audit` for status audits; use `fsd-feature-implementation` for feature work.
