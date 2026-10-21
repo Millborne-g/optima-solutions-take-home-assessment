@@ -7,7 +7,7 @@ import { ContactsView } from "@/views/contacts/ContactsView";
 import { LoadingSpinner } from "@/shared/ui/LoadingSpinner";
 
 // Next.js 16: searchParams is a Promise (async Request API).
-type SearchParams = Promise<{ after?: string; limit?: string }>;
+type SearchParams = Promise<{ after?: string; limit?: string; add?: string }>;
 type PageProps = { searchParams: SearchParams };
 
 /**
@@ -37,15 +37,17 @@ async function ContactsPageContent(props: PageProps) {
   if (fetchError) {
     return (
       <div className="mx-auto max-w-5xl px-4 py-8">
-        <h1 className="text-2xl font-bold text-gray-900">Contacts</h1>
-        <div className="mt-6 rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+        <h1 className="text-2xl font-bold text-foreground">Contacts</h1>
+        <div className="mt-6 rounded-md border border-danger/30 bg-danger-bg px-4 py-3 text-sm text-danger">
           <strong>Error:</strong> {fetchError}
         </div>
       </div>
     );
   }
 
-  return <ContactsView page={page} />;
+  return (
+    <ContactsView page={page} startAdd={searchParams?.add === "1"} />
+  );
 }
 
 export default function ContactsPage(props: PageProps) {

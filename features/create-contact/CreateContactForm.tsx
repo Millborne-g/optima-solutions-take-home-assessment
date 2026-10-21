@@ -10,7 +10,15 @@ import {
   type CreateContactFormValues,
 } from "./useCreateContact";
 
-export function CreateContactForm() {
+type CreateContactFormProps = {
+  onCancel?: () => void;
+  onSuccess?: () => void;
+};
+
+export function CreateContactForm({
+  onCancel,
+  onSuccess,
+}: CreateContactFormProps) {
   const router = useRouter();
   const { state, submit } = useCreateContact();
 
@@ -27,18 +35,19 @@ export function CreateContactForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    await submit(values);
+    const ok = await submit(values);
+    if (ok && onSuccess) onSuccess();
   }
 
   if (state.status === "success") {
     return (
-      <div className="rounded-md bg-green-50 border border-green-200 p-4 text-sm text-green-800">
+      <div className="rounded-md border border-success/30 bg-success-bg p-4 text-sm text-success">
         <p className="font-medium">
           {state.wasUpdated
             ? "Contact updated successfully."
             : "Contact created successfully."}
         </p>
-        <p className="mt-1 text-green-700">
+        <p className="mt-1 opacity-90">
           {[state.contact.firstName, state.contact.lastName]
             .filter(Boolean)
             .join(" ") || state.contact.email}
@@ -47,17 +56,25 @@ export function CreateContactForm() {
           <Button
             variant="secondary"
             size="sm"
-            onClick={() => router.push("/contacts")}
+            onClick={() => {
+              if (onSuccess) {
+                onSuccess();
+                return;
+              }
+              router.push("/contacts");
+            }}
           >
-            View all contacts
+            {onSuccess ? "Done" : "View all contacts"}
           </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => router.push(`/contacts/${state.contact.id}/edit`)}
-          >
-            Edit contact
-          </Button>
+          {!onSuccess && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => router.push(`/contacts/${state.contact.id}/edit`)}
+            >
+              Edit contact
+            </Button>
+          )}
         </div>
       </div>
     );
@@ -118,7 +135,7 @@ export function CreateContactForm() {
 
       {state.status === "error" && (
         <div
-          className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700"
+          className="rounded-md border border-danger/30 bg-danger-bg px-4 py-3 text-sm text-danger"
           role="alert"
         >
           {state.message}
@@ -136,7 +153,13 @@ export function CreateContactForm() {
         <Button
           type="button"
           variant="secondary"
-          onClick={() => router.push("/contacts")}
+          onClick={() => {
+            if (onCancel) {
+              onCancel();
+              return;
+            }
+            router.push("/contacts");
+          }}
         >
           Cancel
         </Button>

@@ -34,7 +34,7 @@ export function EditContactForm({ contact }: EditContactFormProps) {
 
   if (state.status === "success") {
     return (
-      <div className="rounded-md bg-green-50 border border-green-200 p-4 text-sm text-green-800">
+      <div className="rounded-md border border-success/30 bg-success-bg p-4 text-sm text-success">
         <p className="font-medium">Contact updated successfully.</p>
         <div className="mt-3">
           <Button
@@ -104,7 +104,7 @@ export function EditContactForm({ contact }: EditContactFormProps) {
 
       {state.status === "error" && (
         <div
-          className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700"
+          className="rounded-md border border-danger/30 bg-danger-bg px-4 py-3 text-sm text-danger"
           role="alert"
         >
           {state.message}

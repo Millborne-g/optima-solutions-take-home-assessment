@@ -11,18 +11,20 @@ export function ContactsTableRow({ contact }: ContactsTableRowProps) {
     .join(" ");
 
   return (
-    <tr className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-      <td className="px-4 py-3 text-sm font-medium text-gray-900">
-        {fullName || <span className="text-gray-400 italic">No name</span>}
+    <tr className="transition-colors hover:bg-surface-subtle">
+      <td className="px-4 py-3 text-sm font-medium text-foreground">
+        {fullName || (
+          <span className="italic text-muted-foreground">No name</span>
+        )}
       </td>
-      <td className="px-4 py-3 text-sm text-gray-700">{contact.email}</td>
-      <td className="px-4 py-3 text-sm text-gray-500">
-        {contact.phone ?? <span className="text-gray-300">—</span>}
+      <td className="px-4 py-3 text-sm text-foreground">{contact.email}</td>
+      <td className="px-4 py-3 text-sm text-muted-foreground">
+        {contact.phone ?? <span className="text-muted-foreground">—</span>}
       </td>
       <td className="px-4 py-3 text-right">
         <Link
           href={`/contacts/${contact.id}/edit`}
-          className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+          className="text-sm font-medium text-primary hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded"
         >
           Edit
         </Link>

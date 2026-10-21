@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Contact } from "@/entities/contact/model/types";
 import { ContactsTableRow } from "./ContactsTableRow";
@@ -9,9 +8,14 @@ import { Button } from "@/shared/ui/Button";
 type ContactsTableProps = {
   contacts: Contact[];
   nextCursor: string | null;
+  onAddContact: () => void;
 };
 
-export function ContactsTable({ contacts, nextCursor }: ContactsTableProps) {
+export function ContactsTable({
+  contacts,
+  nextCursor,
+  onAddContact,
+}: ContactsTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -24,46 +28,61 @@ export function ContactsTable({ contacts, nextCursor }: ContactsTableProps) {
 
   if (contacts.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-gray-300 py-16 text-center">
-        <p className="text-gray-500 text-sm">No contacts found.</p>
-        <Link
-          href="/contacts/new"
-          className="mt-3 inline-block text-sm text-blue-600 hover:text-blue-800 font-medium"
+      <div className="rounded-xl border border-dashed border-border bg-surface py-16 text-center">
+        <p className="text-sm text-muted-foreground">No contacts found.</p>
+        <button
+          type="button"
+          onClick={onAddContact}
+          className="mt-3 inline-block text-sm font-medium text-primary hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded"
         >
           Add your first contact →
-        </Link>
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-gray-200 shadow-sm">
-      <table className="w-full text-left">
-        <thead className="bg-gray-50 border-b border-gray-200">
-          <tr>
-            <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-              Name
-            </th>
-            <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-              Email
-            </th>
-            <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-              Phone
-            </th>
-            <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide sr-only">
-              Actions
-            </th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-100 bg-white">
-          {contacts.map((contact) => (
-            <ContactsTableRow key={contact.id} contact={contact} />
-          ))}
-        </tbody>
-      </table>
+    <div className="min-w-0 overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
+      <div className="overflow-x-auto">
+        <table className="w-full text-left">
+          <thead className="border-b border-border bg-surface-subtle">
+            <tr>
+              <th
+                scope="col"
+                className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+              >
+                Name
+              </th>
+              <th
+                scope="col"
+                className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+              >
+                Email
+              </th>
+              <th
+                scope="col"
+                className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+              >
+                Phone
+              </th>
+              <th
+                scope="col"
+                className="sr-only px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+              >
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {contacts.map((contact) => (
+              <ContactsTableRow key={contact.id} contact={contact} />
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       {nextCursor && (
-        <div className="flex justify-center border-t border-gray-100 bg-gray-50 px-4 py-3">
+        <div className="flex justify-center border-t border-border bg-surface-subtle px-4 py-3">
           <Button variant="secondary" size="sm" onClick={loadNextPage}>
             Load more
           </Button>

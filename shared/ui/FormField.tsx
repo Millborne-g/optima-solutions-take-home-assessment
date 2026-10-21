@@ -21,18 +21,18 @@ export function FormField({
     <div className={cn("flex flex-col gap-1", className)}>
       <label
         htmlFor={htmlFor}
-        className="text-sm font-medium text-gray-700"
+        className="text-sm font-medium text-foreground"
       >
         {label}
         {required && (
-          <span className="ml-0.5 text-red-500" aria-hidden="true">
+          <span className="ml-0.5 text-danger" aria-hidden="true">
             *
           </span>
         )}
       </label>
       {children}
       {error && (
-        <p className="text-xs text-red-600" role="alert">
+        <p className="text-xs text-danger" role="alert">
           {error}
         </p>
       )}

@@ -1,207 +1,266 @@
-# HubSpot CRM Contacts Dashboard
+# HubSpot Order Sync — Stage 2 Take-home
 
-A production-minded full-stack application that integrates HubSpot CRM with a Next.js 16 frontend and Supabase PostgreSQL sync cache.
+A full-stack integration that receives store `order.created` webhooks, syncs Contacts and Deals into HubSpot, persists sync attempts in Supabase, and exposes a dashboard with retry. Includes a standalone Python CSV exporter for recent Deals.
 
 ---
 
-## Application purpose
+## Requirements addressed
 
-This application provides a contacts dashboard for HubSpot CRM. It allows you to:
+| # | Requirement | Implementation |
+|---|---|---|
+| 22 | Webhook receiver + HMAC | `POST /api/webhooks/order` |
+| 23 | HubSpot Contact + Deal sync | `server/services/orderSyncService.ts` |
+| 24 | Idempotency by `order_id` | Unique constraint on `order_syncs.order_id` |
+| 25 | Retry / backoff / failure logging | `server/lib/retry.ts` + `order_syncs` |
+| 26 | Database persistence | Supabase PostgreSQL (`order_syncs`) |
+| 27 | Sync dashboard + Retry | `/syncs` |
+| 28 | Second language (Python) | `scripts/export_deals.py` |
+| 29 | README | This file |
 
-- **List** HubSpot contacts with cursor-based pagination.
-- **Create** new contacts with server-side validation and automatic duplicate detection.
-- **Update** existing contacts by HubSpot ID.
-- **Sync** contacts to a local Supabase PostgreSQL cache after every HubSpot write.
-
-HubSpot is the **source of truth**. Supabase stores a local cache keyed by stable HubSpot contact IDs.
+Also includes a contacts CRUD dashboard (list / create / edit) built earlier as supporting infrastructure.
 
 ---
 
 ## Architecture
 
-The application uses **Next.js 16 App Router** with a lightweight **Feature-Sliced Design (FSD)** adapted for the App Router's colocation model.
-
-```
-app/           → Route entry points (pages + API Route Handlers)
-views/         → Page-level component composition
-widgets/       → Composite UI sections (ContactsTable)
-features/      → User action hooks and forms (create-contact, edit-contact)
-entities/      → Domain types (Contact) and Zod validation schemas
-shared/        → Reusable UI primitives (Button, Input) and utilities
-server/        → Server-only: HubSpot client, Supabase client, service layer
-```
-
-**Import direction:** `app → views → widgets → features → entities → shared`  
-**Server constraint:** Everything under `server/` is protected by `import "server-only"` and must never be imported by client components.
-
-### Request flow
-
-```
-Browser → fetch /api/contacts
-       → Route Handler (Zod validate)
-       → contactsService (orchestrate)
-       → HubSpot API (source of truth)
-       → Supabase (best-effort sync cache)
-       → JSON response → Client Component re-render
+```mermaid
+flowchart TD
+    Sender["Mock sender / store"] -->|"HMAC signed POST"| Webhook["POST /api/webhooks/order"]
+    Webhook -->|"validate + verify"| SyncSvc["orderSyncService"]
+    SyncSvc -->|"upsert Contact"| HubSpot["HubSpot CRM"]
+    SyncSvc -->|"create Deal + associate"| HubSpot
+    SyncSvc -->|"insert / update"| DB["Supabase order_syncs"]
+    Dashboard["/syncs dashboard"] -->|"GET /api/syncs"| DB
+    Dashboard -->|"POST retry"| SyncSvc
+    Exporter["scripts/export_deals.py"] -->|"search Deals last 7d"| HubSpot
+    Exporter --> CSV["deals_export.csv"]
 ```
 
-For a full architecture description including layer responsibilities, see [ARCHITECTURE.md](./ARCHITECTURE.md).
+Lightweight Feature-Sliced Design:
+
+- `app/` — routes and Route Handlers
+- `views/` — page composition
+- `widgets/` — SyncTable, ContactsTable
+- `features/` — create/edit contact, retry sync
+- `entities/` — Contact and Order types + Zod schemas
+- `shared/` — UI primitives and API helpers
+- `server/` — HubSpot, Supabase, webhook verify, retry (server-only)
 
 ---
 
 ## Prerequisites
 
-- Node.js ≥ 20.9 (tested on 24.14)
+- Node.js ≥ 20.9
 - npm ≥ 11
-- A [HubSpot developer account](https://developers.hubspot.com) with a test CRM portal
-- A [Supabase](https://supabase.com) project (free tier is sufficient)
+- Python 3.10+ (for the exporter)
+- HubSpot **developer test account** (not production)
+- Supabase project (free tier is fine)
 
 ---
 
-## HubSpot authentication and scopes
-
-This application uses **Private App Access Tokens** — the simplest, most reliable authentication method for server-side integrations.
-
-### Create a Private App
-
-1. Log in to your HubSpot portal.
-2. Go to **Settings → Integrations → Private Apps**.
-3. Click **Create a private app**.
-4. Under **Scopes**, add:
-   - `crm.objects.contacts.read`
-   - `crm.objects.contacts.write`
-5. Click **Create app** and copy the access token (shown once).
-
----
-
-## Supabase setup and schema
-
-1. Create a project at [supabase.com](https://supabase.com).
-2. Go to **Project Settings → API** and copy:
-   - **Project URL** → `NEXT_PUBLIC_SUPABASE_URL`
-   - **anon / public key** → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - **service_role key** → `SUPABASE_SERVICE_ROLE_KEY` (server-only)
-3. Run the migration in the **SQL Editor**:
-
-```sql
--- Paste the contents of supabase/migrations/001_contacts.sql
-```
-
-Or use the Supabase CLI:
+## Installation
 
 ```bash
-supabase db push
+npm install
+
+cd scripts
+python -m pip install -r requirements.txt
+cd ..
 ```
+
+Copy environment template:
+
+```bash
+cp .env.example .env.local
+```
+
+Fill in real values in `.env.local` (never commit this file).
 
 ---
 
 ## Environment variables
 
-Copy `.env.example` to `.env.local` and fill in your real values:
-
-```bash
-cp .env.example .env.local
-```
-
 | Variable | Purpose | Exposure |
 |---|---|---|
-| `HUBSPOT_PRIVATE_APP_TOKEN` | HubSpot Private App access token | Server-only |
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL | Safe for client |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key (RLS-limited) | Safe for client |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service-role key (bypasses RLS) | **Server-only** |
-
-> **Security note:** `HUBSPOT_PRIVATE_APP_TOKEN` and `SUPABASE_SERVICE_ROLE_KEY` are imported only inside `server/` and protected with `import "server-only"`. They are never exposed to the browser.
+| `HUBSPOT_PRIVATE_APP_TOKEN` | Private App access token | Server-only |
+| `HUBSPOT_DEAL_PIPELINE_ID` | Deal pipeline ID | Server-only |
+| `HUBSPOT_DEAL_STAGE_ID` | Deal stage ID | Server-only |
+| `WEBHOOK_SIGNING_SECRET` | HMAC shared secret | Server-only |
+| `WEBHOOK_URL` | Optional mock sender target | Local only |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL | Public |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key | Public |
+| `SUPABASE_SERVICE_ROLE_KEY` | Service-role key (bypasses RLS) | Server-only |
 
 ---
 
-## Local setup
+## HubSpot setup
+
+1. Create a [HubSpot developer test account](https://developers.hubspot.com).
+2. Create a **Private App** with scopes:
+   - `crm.objects.contacts.read`
+   - `crm.objects.contacts.write`
+   - `crm.objects.deals.read`
+   - `crm.objects.deals.write`
+3. Copy the access token into `HUBSPOT_PRIVATE_APP_TOKEN`.
+4. Find pipeline / stage IDs: **Settings → Objects → Deals → Pipelines**, or call `GET /crm/v3/pipelines/deals`.
+5. Set `HUBSPOT_DEAL_PIPELINE_ID` and `HUBSPOT_DEAL_STAGE_ID`.
+
+Defaults (`default` / `appointmentscheduled`) work on many test portals but are not guaranteed.
+
+---
+
+## Database setup
+
+Run both migrations in the Supabase **SQL Editor**:
+
+1. [`supabase/migrations/001_contacts.sql`](supabase/migrations/001_contacts.sql) — contacts cache
+2. [`supabase/migrations/002_order_syncs.sql`](supabase/migrations/002_order_syncs.sql) — order sync attempts
+
+Verify: Table Editor shows `contacts` and `order_syncs`. RLS is enabled; no anon policies. All writes use the service-role key from the Next.js server.
+
+---
+
+## Webhook signing and mock sender
+
+Assumption (not named in the assessment brief):
+
+- Header: `x-webhook-signature`
+- Algorithm: HMAC-SHA256 over the exact raw UTF-8 body
+- Encoding: lowercase hex
+- Comparison: constant-time (`crypto.timingSafeEqual`)
+
+Generate a secret:
 
 ```bash
-# 1. Install dependencies
-npm install
-
-# 2. Configure environment variables
-cp .env.example .env.local
-# Edit .env.local with your HubSpot and Supabase credentials
-
-# 3. Run the Supabase migration (see above)
-
-# 4. Start the development server
-npm run dev
+openssl rand -hex 32
 ```
 
-Open [http://localhost:3000](http://localhost:3000) — you will be redirected to `/contacts`.
+Put it in `WEBHOOK_SIGNING_SECRET`, then:
+
+```bash
+npm run dev
+# in another terminal:
+npm run send-webhook
+# or with a fixed order id (positional — not --order-id):
+npm run send-webhook -- ORD-10482
+# optional: new Contact (not Maria)
+npm run send-webhook -- --unique-email
+npm run send-webhook -- --email johndoe+demo@gmail.com
+```
+
+Expected: HTTP 200, Contact + Deal in HubSpot, row on `/syncs`. Default customer is Maria; `--unique-email` / `--email` create a distinct Contact.
+
+Send the same `order_id` again after **success** → HTTP 200 `"alreadySeen": true`, still **one** Deal.
+
+Redelivery of a `failed` or stuck `processing` row **re-runs** the sync (idempotent Deal recovery by name) instead of ignoring the webhook.
 
 ---
 
-## Available scripts
+## How to run
 
-| Script | Command | Purpose |
-|---|---|---|
-| Dev server | `npm run dev` | Start Next.js development server |
-| Production build | `npm run build` | Build for production (Turbopack) |
-| Start production | `npm run start` | Start production server |
-| Lint | `npm run lint` | ESLint 9 flat config |
-| Type check | `npm run type-check` | `tsc --noEmit` |
-| Tests | `npm test` | Vitest unit tests |
-| Test watch | `npm run test:watch` | Vitest in watch mode |
-| Test coverage | `npm run test:coverage` | Vitest with V8 coverage |
-
----
-
-## API endpoints
-
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/api/contacts` | List contacts (`?after=<cursor>&limit=<n>`) |
-| `POST` | `/api/contacts` | Create or update contact by email |
-| `PATCH` | `/api/contacts/:id` | Partially update a contact by HubSpot ID |
-| `GET` | `/api/contacts/:id` | Fetch a single contact by HubSpot ID |
-
-All endpoints return `{ error: string, code: string }` on failure.
-
-### POST /api/contacts — duplicate handling
-
-Rather than returning a 409 error, the endpoint automatically detects an existing contact by email and updates it instead:
-
-- **200 + `wasUpdated: true`** — email already existed; contact was updated.
-- **201 + `wasUpdated: false`** — new contact created.
-
----
-
-## Implemented functionality
-
-- [x] HubSpot Private App authentication (server-only)
-- [x] Contacts list with cursor-based pagination
-- [x] Contact creation with duplicate detection (search-before-create)
-- [x] Contact update (partial PATCH)
-- [x] Zod server-side validation on all inputs
-- [x] Supabase sync cache (upsert on every HubSpot write)
-- [x] Partial failure handling (HubSpot ok, Supabase fails → log and continue)
-- [x] Rate-limit handling (429 → `HubSpotRateLimitError` with `retryAfterMs`)
-- [x] Consistent error responses with typed codes
-- [x] Loading, empty, and error states in UI
-- [x] 27 Vitest unit tests (schema validation, service logic, mocked externals)
-
----
-
-## Known limitations
-
-- **Webhooks not implemented.** Inbound HubSpot webhooks would require a publicly accessible URL and HMAC verification; deferred given the time budget.
-- **No user authentication.** The dashboard is unauthenticated. In production, add Next.js middleware with session checks.
-- **Supabase sync is one-way (HubSpot → Supabase).** Changes made directly in HubSpot between requests are not automatically reflected; refresh to re-sync.
-- **Pagination is cursor-based (append-only).** No previous-page navigation.
-- **No search UI.** Search-by-email logic exists in the service layer for duplicate detection but is not exposed as a UI feature.
-
----
-
-## Important design decisions
-
-| Decision | Rationale |
+| Command | Purpose |
 |---|---|
-| Private App token (not OAuth) | Simplest approach for a server-side assessment; no browser OAuth flow needed |
-| HubSpot as source of truth | Avoids conflict resolution complexity; Supabase is a cache only |
-| Best-effort Supabase sync | Prevents Supabase failures from breaking the HubSpot integration path |
-| Zod v4 server-side validation only | Client forms submit to Route Handlers for authoritative validation; client uses basic HTML5 attributes only |
-| `server-only` import guard | Build-time prevention of accidental credential exposure to the browser |
-| Upsert-on-email instead of 409 | More user-friendly; avoids the UI having to handle and retry conflict errors |
+| `npm run dev` | Next.js app at http://localhost:3000 |
+| `npm run send-webhook` | Signed mock order webhook |
+| `npm test` | Vitest unit tests |
+| `npm run test:python` | Python exporter unit tests (mocked API) |
+| `npm run lint` | ESLint |
+| `npm run type-check` | TypeScript |
+| `npm run build` | Production build |
+| `python scripts/export_deals.py` | Export last 7 days of Deals to CSV |
+| `python scripts/export_deals.py --dry-run` | Preview without writing a file |
+| `python scripts/test_export_deals.py` | Same as `npm run test:python` |
+
+Pages:
+
+- `/contacts` — contacts list (Add contact opens a modal)
+- `/contacts/[id]/edit` — edit contact
+- `/syncs` — order sync dashboard
+
+---
+
+## Example webhook payload
+
+```json
+{
+  "event": "order.created",
+  "order_id": "ORD-10482",
+  "created_at": "2026-09-20T14:32:00+08:00",
+  "customer": {
+    "email": "maria.santos@example.com",
+    "first_name": "Maria",
+    "last_name": "Santos",
+    "phone": "+639171234567"
+  },
+  "items": [
+    { "sku": "TSH-BLK-M", "name": "Black Tee (M)", "qty": 2, "price": 450.0 }
+  ],
+  "currency": "PHP",
+  "total": 900.0
+}
+```
+
+Flow:
+
+1. Verify HMAC → reject 401 if invalid (no HubSpot call).
+2. Validate Zod schema → reject 400 if invalid.
+3. Insert `order_id` uniquely → if conflict, return 200 duplicate.
+4. Upsert Contact by email; create Deal `Order {order_id}`; associate; persist IDs.
+5. On HubSpot 429/5xx: bounded exponential backoff (max 4 attempts). Permanent 4xx is not retried.
+6. Failures stored in `order_syncs` for dashboard Retry.
+
+---
+
+## Idempotency, retry, and dashboard
+
+- **Idempotency:** PostgreSQL `UNIQUE (order_id)`. Concurrent duplicates lose the insert race safely. Successful syncs stay `alreadySeen` on redelivery.
+- **Resume:** Redelivery of `failed` or `processing` rows claims the row and re-runs HubSpot sync (uses stored payload when valid).
+- **Partial recovery:** If Contact ID was saved but Deal was not, retry searches for deal name `Order {order_id}` before creating; after a failed create it searches again before giving up.
+- **Retry button:** Enabled for `failed` and stuck `processing` rows. Server claims only those statuses (409 for `success` / `pending`).
+- **Logging:** `status`, `error_message`, `attempt_count`, HubSpot IDs, timestamps.
+
+---
+
+## Python CSV exporter
+
+```bash
+cd scripts
+python -m pip install -r requirements.txt
+HUBSPOT_PRIVATE_APP_TOKEN=your_token python export_deals.py
+```
+
+- Window: last 7 days, **UTC**, filter on HubSpot `createdate`
+- Pagination: follows HubSpot `after` until exhausted
+- Columns: `deal_id`, `deal_name`, `amount`, `currency`, `created_at_utc`, `pipeline`, `stage`, `order_id`
+- `currency` from HubSpot `deal_currency_code` when present (empty if the portal does not expose it)
+- `order_id` parsed from deal name `Order …` when present
+
+---
+
+## Assumptions
+
+- HMAC header / algorithm as documented above (brief did not specify).
+- Deal name format: `Order {order_id}`.
+- Close date: UTC date from `created_at`.
+- Pipeline / stage from env (portal-specific).
+- Currency on Deal create uses the portal default; payload currency is validated but not written as a Deal property. The Python exporter reads `deal_currency_code` when HubSpot returns it.
+- Webhook handler returns 200 after accepting work so senders do not hammer retries; failures are recoverable via `/syncs`.
+
+---
+
+## Known limitations / future improvements
+
+- No async job queue (retries are synchronous with short backoff).
+- Dashboard has no authentication (assessment scope).
+- No HubSpot-native webhook subscription (mock sender + shared secret instead).
+- PHP currency may need enabling in HubSpot account defaults.
+- With more time: BullMQ (or similar), webhook timestamp skew checks, n8n bonus workflow, Docker Compose.
+
+---
+
+## Security notes
+
+- Never commit `.env.local` or real tokens.
+- `server/` modules use `import "server-only"`.
+- Service-role and webhook secret are never sent to the browser.
+- Do not log secrets or paste them into chat / README.

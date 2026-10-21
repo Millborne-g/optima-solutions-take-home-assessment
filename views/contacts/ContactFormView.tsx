@@ -11,18 +11,23 @@ export function ContactFormView(props: ContactFormViewProps) {
   const isEdit = props.mode === "edit";
 
   return (
-    <div className="mx-auto max-w-xl px-4 py-8">
-      <nav className="mb-6 text-sm text-gray-500">
-        <Link href="/contacts" className="hover:text-gray-700">
+    <div className="mx-auto max-w-xl min-w-0">
+      <nav className="mb-6 text-sm text-muted-foreground" aria-label="Breadcrumb">
+        <Link
+          href="/contacts"
+          className="hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded"
+        >
           Contacts
         </Link>
-        <span className="mx-2">›</span>
-        <span className="text-gray-900">
+        <span className="mx-2" aria-hidden="true">
+          ›
+        </span>
+        <span className="text-foreground">
           {isEdit ? "Edit contact" : "New contact"}
         </span>
       </nav>
 
-      <h1 className="mb-6 text-2xl font-bold text-gray-900">
+      <h1 className="mb-6 hidden text-2xl font-bold text-foreground md:block">
         {isEdit ? "Edit contact" : "New contact"}
       </h1>
 

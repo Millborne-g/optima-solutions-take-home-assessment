@@ -10,7 +10,9 @@
     "type-check": "tsc --noEmit",
     "test": "cross-env VITE_CONFIG_NATIVE_IGNORE_WARNING=true vitest run --config vitest.config.ts",
     "test:watch": "cross-env VITE_CONFIG_NATIVE_IGNORE_WARNING=true vitest --config vitest.config.ts",
-    "test:coverage": "cross-env VITE_CONFIG_NATIVE_IGNORE_WARNING=true vitest run --coverage --config vitest.config.ts"
+    "test:coverage": "cross-env VITE_CONFIG_NATIVE_IGNORE_WARNING=true vitest run --coverage --config vitest.config.ts",
+    "test:python": "python scripts/test_export_deals.py",
+    "send-webhook": "tsx scripts/send_webhook.ts"
   },
   "dependencies": {
     "@hubspot/api-client": "^14.0.1",
@@ -36,6 +38,7 @@
     "eslint-config-next": "16.4.2",
     "jsdom": "^29.1.1",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5",
     "vite": "^8.3.4",
     "vitest": "^5.0.5"

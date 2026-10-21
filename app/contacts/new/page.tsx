@@ -1,12 +1,8 @@
-import { ContactFormView } from "@/views/contacts/ContactFormView";
+import { redirect } from "next/navigation";
 
-// Opt out of instant navigation — form is client-side interactive.
 export const instant = false;
 
-/**
- * New contact page — Server Component.
- * Renders the create contact form (client component) inside a server shell.
- */
+/** Add-contact now opens as a modal on /contacts. */
 export default function NewContactPage() {
-  return <ContactFormView mode="create" />;
+  redirect("/contacts?add=1");
 }

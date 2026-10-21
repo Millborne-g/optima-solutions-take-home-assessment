@@ -19,7 +19,7 @@ export type CreateContactFormValues = {
 export function useCreateContact() {
   const [state, setState] = useState<CreateContactState>({ status: "idle" });
 
-  async function submit(values: CreateContactFormValues) {
+  async function submit(values: CreateContactFormValues): Promise<boolean> {
     setState({ status: "loading" });
 
     try {
@@ -46,7 +46,7 @@ export function useCreateContact() {
               ? data.error
               : `Request failed (${res.status})`,
         });
-        return;
+        return false;
       }
 
       if ("contact" in data) {
@@ -55,12 +55,16 @@ export function useCreateContact() {
           contact: data.contact,
           wasUpdated: data.wasUpdated,
         });
+        return true;
       }
+
+      return false;
     } catch {
       setState({
         status: "error",
         message: "Network error. Please try again.",
       });
+      return false;
     }
   }
 

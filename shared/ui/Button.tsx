@@ -11,11 +11,11 @@ type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    "bg-blue-600 text-white hover:bg-blue-700 focus-visible:ring-blue-500",
+    "bg-primary text-primary-foreground hover:bg-primary-hover focus-visible:ring-focus-ring",
   secondary:
-    "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus-visible:ring-gray-400",
+    "bg-surface text-foreground border border-border hover:bg-surface-subtle focus-visible:ring-focus-ring",
   danger:
-    "bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-500",
+    "bg-danger text-white hover:opacity-90 focus-visible:ring-danger",
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
@@ -36,9 +36,10 @@ export function Button({
     <button
       {...props}
       disabled={disabled || isLoading}
+      aria-busy={isLoading || undefined}
       className={cn(
         "inline-flex items-center justify-center gap-2 rounded-md font-medium",
-        "transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+        "transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         "disabled:pointer-events-none disabled:opacity-50",
         variantClasses[variant],
         sizeClasses[size],
