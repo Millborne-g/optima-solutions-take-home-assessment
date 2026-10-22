@@ -13,7 +13,7 @@ import {
 import type { Contact } from "@/entities/contact/model/types";
 import { HubSpotNotFoundError } from "@/server/hubspot/contactsApi";
 import { ContactsView } from "@/views/contacts/ContactsView";
-import { LoadingSpinner } from "@/shared/ui/LoadingSpinner";
+import { ContactsPageSkeleton } from "@/shared/ui/Skeleton";
 import { PageContainer, PageHeader } from "@/shared/ui/PageContainer";
 
 // Next.js 16: searchParams is a Promise (async Request API).
@@ -103,13 +103,7 @@ async function ContactsPageContent(props: PageProps) {
 
 export default function ContactsPage(props: PageProps) {
   return (
-    <Suspense
-      fallback={
-        <div className="flex h-64 items-center justify-center">
-          <LoadingSpinner size="lg" label="Loading contacts…" />
-        </div>
-      }
-    >
+    <Suspense fallback={<ContactsPageSkeleton />}>
       <ContactsPageContent {...props} />
     </Suspense>
   );

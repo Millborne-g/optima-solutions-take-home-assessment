@@ -9,7 +9,7 @@ import {
   parsePageParam,
 } from "@/shared/lib/tablePagination";
 import { SyncDashboardView } from "@/views/syncs/SyncDashboardView";
-import { LoadingSpinner } from "@/shared/ui/LoadingSpinner";
+import { SyncsPageSkeleton } from "@/shared/ui/Skeleton";
 
 export const instant = false;
 
@@ -79,13 +79,7 @@ async function SyncsPageContent(props: PageProps) {
 
 export default function SyncsPage(props: PageProps) {
   return (
-    <Suspense
-      fallback={
-        <div className="flex h-64 items-center justify-center">
-          <LoadingSpinner size="lg" label="Loading syncs…" />
-        </div>
-      }
-    >
+    <Suspense fallback={<SyncsPageSkeleton />}>
       <SyncsPageContent {...props} />
     </Suspense>
   );

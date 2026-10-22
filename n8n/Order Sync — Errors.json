@@ -1,0 +1,60 @@
+{
+  "name": "Order Sync — Errors",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "12a3837c-2d0d-4fd1-8134-88ba18faaa21",
+      "name": "Error Trigger"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://webhook.site/8a94cfc0-279a-4a41-8bd3-31b372a1f112",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"text\": \"Order sync failed. Workflow: {{ $json.workflow.name }}. Error: {{ $json.execution.error.message }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        224,
+        0
+      ],
+      "id": "977a3471-7636-44db-b10d-7de4901d5293",
+      "name": "HTTP Request"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "d77a2f7a-fddd-49f8-8d1f-a7069ecdc3ea",
+  "meta": {
+    "instanceId": "e02df8dc2522c687debdb3aeedc246dc0d0b723c544e185e34495ef5fcbcc5ec"
+  },
+  "nodeGroups": [],
+  "id": "3R0srl2O3bYmaCCg",
+  "tags": []
+}

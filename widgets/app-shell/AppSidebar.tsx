@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { BrandMark } from "@/shared/ui/BrandMark";
 import { ThemeToggle } from "@/shared/ui/ThemeToggle";
 import { cn } from "@/shared/lib/cn";
 import { MAIN_NAV, isNavActive } from "./nav";
@@ -230,31 +231,6 @@ export function AppSidebar({
         )}
       </div>
     </aside>
-  );
-}
-
-function BrandMark() {
-  return (
-    <div
-      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground"
-      aria-hidden="true"
-    >
-      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none">
-        <path
-          d="M4 7h11M4 12h7M4 17h9"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
-        <path
-          d="M16 9l4 3-4 3"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    </div>
   );
 }
 

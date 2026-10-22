@@ -17,7 +17,7 @@ A full-stack integration that receives store `order.created` webhooks, syncs Con
 | 28 | Second language (Python) | `scripts/export_deals.py` |
 | 29 | README | This file |
 
-Also includes a contacts CRUD dashboard (list / create / edit) built earlier as supporting infrastructure.
+Also includes a contacts CRUD dashboard (list / create / edit) built earlier as supporting infrastructure. Bonus: Docker Compose (app only), exported n8n workflows, and [`TEST_GUIDE.md`](TEST_GUIDE.md).
 
 ---
 
@@ -158,9 +158,11 @@ Redelivery of a `failed` or stuck `processing` row **re-runs** the sync (idempot
 
 ## Docker (app only)
 
-Runs the Next.js app in a container on port **3000**. **Does not** start Supabase or HubSpot — use your existing cloud project and Private App credentials in `.env.local` (migrations must already be applied in Supabase).
+Runs the Next.js app in a container. **Does not** start Supabase, HubSpot, or n8n — use your existing cloud project and Private App credentials in `.env.local` (migrations must already be applied in Supabase).
 
-1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or Docker Engine + Compose).
+Published port is **`4000:4000`** (`PORT=4000` in the image) so Compose can sit next to `npm run dev` on **3000**. Live Docker steps: [`TEST_GUIDE.md`](TEST_GUIDE.md#docker-live).
+
+1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or Docker Engine + Compose) and start it.
 2. Copy and fill env (same as local dev):
 
    ```bash
@@ -175,24 +177,57 @@ Runs the Next.js app in a container on port **3000**. **Does not** start Supabas
 
    or export those two variables in your shell before `docker compose build`.
 
-4. Build and run:
+4. Build and run (PowerShell: two commands, not `&&`):
 
    ```bash
    docker compose build
    docker compose up
    ```
 
-5. Open http://localhost:3000 (`/contacts`, `/syncs`).
+5. Open http://localhost:4000 (`/contacts`, `/syncs`). After changing `.env.local`, recreate: `docker compose up --force-recreate`.
 
-**Webhook sender from the host** (container publishes `3000:3000`):
+**Webhook sender from the host:**
 
 ```bash
-# In .env.local on the machine running the sender (optional; default is localhost:3000)
-WEBHOOK_URL=http://localhost:3000/api/webhooks/order
+WEBHOOK_URL=http://localhost:4000/api/webhooks/order
 npm run send-webhook -- ORD-DOCKER-1
 ```
 
 Server-only secrets (`SUPABASE_SERVICE_ROLE_KEY`, `HUBSPOT_PRIVATE_APP_TOKEN`, `WEBHOOK_SIGNING_SECRET`, etc.) are loaded at **runtime** via `env_file: .env.local` — not baked into the image. Do not commit `.env` / `.env.local`.
+
+---
+
+## n8n (bonus)
+
+Exported workflows (import in n8n Cloud or local):
+
+- [`n8n/Order Sync.json`](n8n/Order%20Sync.json) — `POST` webhook `order-created` → HTTP Request to this app’s `/api/webhooks/order` → Respond to Webhook
+- [`n8n/Order Sync — Errors.json`](n8n/Order%20Sync%20—%20Errors.json) — Error Trigger → HTTP notify (webhook.site or similar)
+
+HMAC, HubSpot Contact/Deal sync, and `order_id` idempotency still run in **this Next.js service**. n8n is ingress + failure notify. On **Order Sync**, set **Error workflow** to **Order Sync — Errors**, then **Publish**.
+
+**n8n Cloud cannot call `localhost`.** For local `npm run dev` on port 3000, tunnel with:
+
+```bash
+ngrok http 3000
+```
+
+Free ngrok issues a **new HTTPS host every time you start it**. After each run:
+
+1. Copy **Forwarding** from the ngrok window or http://127.0.0.1:4040.
+2. In the **HTTP Request** node, set URL to `https://<current-ngrok-host>/api/webhooks/order` (not the n8n webhook URL).
+3. **Publish** Order Sync again.
+
+Do not put the ngrok URL on the Webhook node. That node’s **production** URL looks like `https://<account>.app.n8n.cloud/webhook/order-created` (`/webhook/`, not `/webhook-test/`). Point the mock sender at that:
+
+```bash
+WEBHOOK_URL=https://<account>.app.n8n.cloud/webhook/order-created
+npm run send-webhook -- ORD-N8N-1
+```
+
+If you tunnel Compose instead, use `ngrok http 4000` and the same “update HTTP Request after every ngrok restart” step.
+
+Replace ngrok / webhook.site URLs in the JSON with placeholders before sharing if you do not want personal hosts in git.
 
 ---
 
@@ -201,7 +236,7 @@ Server-only secrets (`SUPABASE_SERVICE_ROLE_KEY`, `HUBSPOT_PRIVATE_APP_TOKEN`, `
 | Command | Purpose |
 |---|---|
 | `npm run dev` | Next.js app at http://localhost:3000 |
-| `docker compose up` | Production app in Docker (see above) |
+| `docker compose up` | Production app in Docker at http://localhost:4000 |
 | `npm run send-webhook` | Signed mock order webhook |
 | `npm test` | Vitest unit tests |
 | `npm run test:python` | Python exporter unit tests (mocked API) |
@@ -214,9 +249,10 @@ Server-only secrets (`SUPABASE_SERVICE_ROLE_KEY`, `HUBSPOT_PRIVATE_APP_TOKEN`, `
 
 Pages:
 
-- `/contacts` — HubSpot contacts list (5 per page; search `?q=`; add/edit modals; optional `?add=1` or `?edit=<hubspotId>`; cursor `?after=` + `history`; Previous / Next)
+- `/` — redirects to `/contacts`. Hard reload shows a BrandMark splash, then list skeletons.
+- `/contacts` — HubSpot contacts list (5 per page; search `?q=`; add/edit modals; optional `?add=1` or `?edit=<hubspotId>`; cursor `?after=` + `history`; Previous / Next; cards below `md`)
 - `/contacts/[id]/edit` — redirects to `/contacts?edit=<id>` (opens edit modal)
-- `/syncs` — order sync dashboard from Supabase (5 per page; `?page=` + optional `?q=` order ID; Previous / Next)
+- `/syncs` — order sync dashboard from Supabase (5 per page; `?page=` + optional `?q=` order ID; Previous / Next; cards below `md`)
 
 ---
 
@@ -295,7 +331,8 @@ HUBSPOT_PRIVATE_APP_TOKEN=your_token python export_deals.py
 - Dashboard has no authentication (assessment scope).
 - No HubSpot-native webhook subscription (mock sender + shared secret instead).
 - PHP currency may need enabling in HubSpot account defaults.
-- With more time: BullMQ (or similar), webhook timestamp skew checks, n8n bonus workflow.
+- n8n bonus is an exported ingress + error-notify pair, not a full HubSpot rebuild inside n8n. Free ngrok hosts change every process.
+- With more time: BullMQ (or similar), webhook timestamp skew checks, HubSpot nodes inside n8n.
 
 ---
 

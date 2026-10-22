@@ -1,0 +1,102 @@
+{
+  "name": "Order Sync",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "order-created",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "8499efe8-058e-43b1-ae65-00606790e76b",
+      "name": "Webhook",
+      "webhookId": "de6604e1-f6fb-49a7-9a29-f84384b08234"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://e7d1-143-44-192-201.ngrok-free.app/api/webhooks/order",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "x-webhook-signature",
+              "value": "={{ $json.headers['x-webhook-signature'] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        224,
+        0
+      ],
+      "id": "41e06728-b52a-4f52-81ac-17eaa17f0339",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"ok\": true\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        448,
+        0
+      ],
+      "id": "ed36d3d1-778e-4686-92aa-26174c4e6dae",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "f033d38a-5563-4e21-b139-b7c653a064c3",
+  "meta": {
+    "instanceId": "e02df8dc2522c687debdb3aeedc246dc0d0b723c544e185e34495ef5fcbcc5ec"
+  },
+  "nodeGroups": [],
+  "id": "NjeSOxDZeRhxfQto",
+  "tags": []
+}

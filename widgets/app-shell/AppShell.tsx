@@ -1,11 +1,18 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import { cn } from "@/shared/lib/cn";
+import {
+  ContactsPageSkeleton,
+  SyncsPageSkeleton,
+} from "@/shared/ui/Skeleton";
 import { AppSidebar } from "./AppSidebar";
 import { MobileTopBar } from "./MobileTopBar";
+import { SplashScreen } from "./SplashScreen";
 import { titleForPath } from "./nav";
+
+const FIRST_SKELETON_MS = 600;
 
 const COLLAPSE_KEY = "sidebar_collapsed";
 const COLLAPSE_EVENT = "sidebar-collapse";
@@ -36,6 +43,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     getCollapseServerSnapshot,
   );
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [firstLoad, setFirstLoad] = useState<"splash" | "skeleton" | "ready">(
+    "splash",
+  );
+
+  const onSplashFinished = useCallback(() => {
+    setFirstLoad((current) => (current === "ready" ? current : "skeleton"));
+  }, []);
+
+  useEffect(() => {
+    if (firstLoad !== "skeleton") return;
+    const timer = window.setTimeout(() => {
+      setFirstLoad("ready");
+    }, FIRST_SKELETON_MS);
+    return () => window.clearTimeout(timer);
+  }, [firstLoad]);
 
   useEffect(() => {
     if (!drawerOpen) return;
@@ -52,9 +74,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   const title = titleForPath(pathname);
+  const showFirstLoadSkeleton = firstLoad !== "ready";
+  const firstLoadSkeleton =
+    pathname === "/syncs" ? <SyncsPageSkeleton /> : <ContactsPageSkeleton />;
 
   return (
     <div className="flex h-dvh overflow-hidden bg-background p-3 sm:p-4">
+      <SplashScreen onFinished={onSplashFinished} />
       <div
         className={cn(
           "hidden shrink-0 md:block",
@@ -79,7 +105,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       >
         <MobileTopBar title={title} onOpenMenu={() => setDrawerOpen(true)} />
         <main className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-5 sm:p-6 md:p-8">
-          {children}
+          {showFirstLoadSkeleton ? firstLoadSkeleton : children}
         </main>
       </div>
 
