@@ -2,6 +2,9 @@
 
 A full-stack integration that receives store `order.created` webhooks, syncs Contacts and Deals into HubSpot, persists sync attempts in Supabase, and exposes a dashboard with retry. Includes a standalone Python CSV exporter for recent Deals.
 
+> [!IMPORTANT]
+> **Note for reviewers:** Git history is lumpy — a few large commits instead of small incremental ones. I had a personal emergency mid-build and could not keep a tidy commit trail. The current tree is the complete submission. Thank you for understanding.
+
 ---
 
 ## Requirements addressed
