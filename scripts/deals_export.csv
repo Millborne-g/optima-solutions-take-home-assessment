@@ -1,6 +1,0 @@
-deal_id,deal_name,amount,currency,created_at_utc,pipeline,stage,order_id
-356586694376,Order ORD-26832-6a74,900,USD,2026-10-21T08:30:34.484Z,default,appointmentscheduled,ORD-26832-6a74
-356583152377,Order ORD-94085-d04a,900,USD,2026-10-21T07:16:53.102Z,default,appointmentscheduled,ORD-94085-d04a
-356421250792,Order --order-id,900,USD,2026-10-21T07:15:22.162Z,default,appointmentscheduled,--order-id
-356421248712,Order ORD-21903-a7b1,900,USD,2026-10-21T07:03:14.485Z,default,appointmentscheduled,ORD-21903-a7b1
-356547391187,Order ORD-41572-52cf,900,USD,2026-10-21T06:45:47.672Z,default,appointmentscheduled,ORD-41572-52cf

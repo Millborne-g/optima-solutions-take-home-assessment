@@ -10,9 +10,15 @@ import { useEditContact, type EditContactFormValues } from "./useEditContact";
 
 type EditContactFormProps = {
   contact: Contact;
+  onCancel?: () => void;
+  onSuccess?: () => void;
 };
 
-export function EditContactForm({ contact }: EditContactFormProps) {
+export function EditContactForm({
+  contact,
+  onCancel,
+  onSuccess,
+}: EditContactFormProps) {
   const router = useRouter();
   const { state, submit } = useEditContact(contact.id);
 
@@ -29,10 +35,11 @@ export function EditContactForm({ contact }: EditContactFormProps) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    await submit(values);
+    const ok = await submit(values);
+    if (ok && onSuccess) onSuccess();
   }
 
-  if (state.status === "success") {
+  if (state.status === "success" && !onSuccess) {
     return (
       <div className="rounded-md border border-success/30 bg-success-bg p-4 text-sm text-success">
         <p className="font-medium">Contact updated successfully.</p>
@@ -43,6 +50,19 @@ export function EditContactForm({ contact }: EditContactFormProps) {
             onClick={() => router.push("/contacts")}
           >
             Back to contacts
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (state.status === "success" && onSuccess) {
+    return (
+      <div className="rounded-md border border-success/30 bg-success-bg p-4 text-sm text-success">
+        <p className="font-medium">Contact updated successfully.</p>
+        <div className="mt-3">
+          <Button variant="secondary" size="sm" onClick={onSuccess}>
+            Done
           </Button>
         </div>
       </div>
@@ -112,16 +132,19 @@ export function EditContactForm({ contact }: EditContactFormProps) {
       )}
 
       <div className="flex gap-3 pt-1">
-        <Button
-          type="submit"
-          isLoading={state.status === "loading"}
-        >
+        <Button type="submit" isLoading={state.status === "loading"}>
           {state.status === "loading" ? "Saving…" : "Save changes"}
         </Button>
         <Button
           type="button"
           variant="secondary"
-          onClick={() => router.push("/contacts")}
+          onClick={() => {
+            if (onCancel) {
+              onCancel();
+              return;
+            }
+            router.push("/contacts");
+          }}
         >
           Cancel
         </Button>

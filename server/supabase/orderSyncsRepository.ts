@@ -177,17 +177,79 @@ export async function updateSync(
   return rowToSync(data as OrderSyncRow);
 }
 
-export async function listRecent(limit = 50): Promise<OrderSync[]> {
-  const { data, error } = await client()
+export type SyncStatusCounts = Record<SyncStatus, number>;
+
+/**
+ * Paginated recent syncs (newest first). Offset is 0-based.
+ * Optional `orderIdQuery` filters with case-insensitive substring match.
+ */
+export async function listRecentPage(
+  offset = 0,
+  limit = 5,
+  orderIdQuery?: string,
+): Promise<{ syncs: OrderSync[]; hasMore: boolean; total: number }> {
+  const safeOffset = Math.max(0, Math.floor(offset));
+  const safeLimit = Math.min(50, Math.max(1, Math.floor(limit)));
+  const q = orderIdQuery?.trim() ?? "";
+
+  let builder = client()
     .from("order_syncs")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(limit);
+    .select("*", { count: "exact" })
+    .order("created_at", { ascending: false });
+
+  if (q !== "") {
+    const escaped = q.replace(/[%_\\]/g, "\\$&");
+    builder = builder.ilike("order_id", `%${escaped}%`);
+  }
+
+  const { data, error, count } = await builder.range(
+    safeOffset,
+    safeOffset + safeLimit - 1,
+  );
 
   if (error) {
-    console.error("[Supabase] listRecent error:", error.message);
+    console.error("[Supabase] listRecentPage error:", error.message);
     throw new Error(`Failed to list order syncs: ${error.message}`);
   }
 
-  return ((data ?? []) as OrderSyncRow[]).map(rowToSync);
+  const syncs = ((data ?? []) as OrderSyncRow[]).map(rowToSync);
+  const total = count ?? syncs.length;
+  const hasMore = safeOffset + syncs.length < total;
+  return { syncs, hasMore, total };
+}
+
+/**
+ * Counts of sync rows by status across the full table.
+ */
+export async function countByStatus(): Promise<SyncStatusCounts> {
+  const statuses: SyncStatus[] = [
+    "success",
+    "failed",
+    "processing",
+    "pending",
+  ];
+
+  const results = await Promise.all(
+    statuses.map(async (status) => {
+      const { count, error } = await client()
+        .from("order_syncs")
+        .select("*", { count: "exact", head: true })
+        .eq("status", status);
+
+      if (error) {
+        console.error("[Supabase] countByStatus error:", error.message);
+        throw new Error(`Failed to count order syncs: ${error.message}`);
+      }
+
+      return [status, count ?? 0] as const;
+    }),
+  );
+
+  return {
+    success: 0,
+    failed: 0,
+    processing: 0,
+    pending: 0,
+    ...Object.fromEntries(results),
+  };
 }

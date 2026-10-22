@@ -1,62 +1,143 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { ContactsPage } from "@/entities/contact/model/types";
-import { AddContactModal } from "@/features/create-contact/AddContactModal";
+import type { Contact, ContactsPage } from "@/entities/contact/model/types";
+import { ContactModal } from "@/features/create-contact/ContactModal";
 import { ContactsTable } from "@/widgets/contacts-table/ContactsTable";
 import { Button } from "@/shared/ui/Button";
+import { DebouncedSearchField } from "@/shared/ui/DebouncedSearchField";
+import { PageContainer, PageHeader } from "@/shared/ui/PageContainer";
+import { useState } from "react";
 
 type ContactsViewProps = {
   page: ContactsPage;
+  query?: string;
+  total?: number | null;
   startAdd?: boolean;
+  startEditContact?: Contact | null;
 };
 
-export function ContactsView({ page, startAdd = false }: ContactsViewProps) {
+export function ContactsView({
+  page,
+  query = "",
+  total = null,
+  startAdd = false,
+  startEditContact = null,
+}: ContactsViewProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [open, setOpen] = useState(startAdd);
 
-  const clearAddParam = useCallback(() => {
-    if (searchParams.get("add") !== "1") return;
+  const [modalOpen, setModalOpen] = useState(
+    startAdd || startEditContact != null,
+  );
+  const [modalMode, setModalMode] = useState<"create" | "edit">(
+    startEditContact != null ? "edit" : "create",
+  );
+  const [editingContact, setEditingContact] = useState<Contact | null>(
+    startEditContact,
+  );
+
+  const commitSearch = useCallback(
+    (next: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("after");
+      params.delete("history");
+      params.delete("add");
+      params.delete("edit");
+      if (next === "") {
+        params.delete("q");
+      } else {
+        params.set("q", next);
+      }
+      const qs = params.toString();
+      router.push(qs ? `/contacts?${qs}` : "/contacts");
+    },
+    [router, searchParams],
+  );
+
+  const clearModalParams = useCallback(() => {
     const params = new URLSearchParams(searchParams.toString());
-    params.delete("add");
-    const query = params.toString();
-    router.replace(query ? `/contacts?${query}` : "/contacts");
+    let changed = false;
+    if (params.get("add") === "1") {
+      params.delete("add");
+      changed = true;
+    }
+    if (params.has("edit")) {
+      params.delete("edit");
+      changed = true;
+    }
+    if (!changed) return;
+    const qs = params.toString();
+    router.replace(qs ? `/contacts?${qs}` : "/contacts");
   }, [router, searchParams]);
 
-  const close = useCallback(() => {
-    setOpen(false);
-    clearAddParam();
-  }, [clearAddParam]);
+  const closeModal = useCallback(() => {
+    setModalOpen(false);
+    setEditingContact(null);
+    clearModalParams();
+  }, [clearModalParams]);
 
-  const created = useCallback(() => {
-    setOpen(false);
-    clearAddParam();
+  const saved = useCallback(() => {
+    setModalOpen(false);
+    setEditingContact(null);
+    clearModalParams();
     router.refresh();
-  }, [clearAddParam, router]);
+  }, [clearModalParams, router]);
+
+  const openCreate = useCallback(() => {
+    setModalMode("create");
+    setEditingContact(null);
+    setModalOpen(true);
+  }, []);
+
+  const openEdit = useCallback((contact: Contact) => {
+    setModalMode("edit");
+    setEditingContact(contact);
+    setModalOpen(true);
+  }, []);
+
+  const resolvedTotal = total ?? page.total ?? page.contacts.length;
 
   return (
-    <div className="mx-auto max-w-5xl min-w-0">
-      <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
-        <div className="hidden md:block">
-          <h1 className="text-2xl font-bold text-foreground">Contacts</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Synced from your HubSpot CRM
-          </p>
-        </div>
-        <Button className="md:ml-auto" onClick={() => setOpen(true)}>
-          Add contact
-        </Button>
-      </header>
+    <PageContainer>
+      <PageHeader
+        title="Contacts"
+        description="Synced from your HubSpot CRM"
+        actions={
+          <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center md:ml-auto">
+            <DebouncedSearchField
+              key={query || "__empty"}
+              initialValue={query}
+              onCommit={commitSearch}
+              placeholder="Search contacts"
+              aria-label="Search contacts"
+            />
+            <Button onClick={openCreate}>
+              <span className="mr-1" aria-hidden="true">
+                +
+              </span>
+              Add contact
+            </Button>
+          </div>
+        }
+      />
 
       <ContactsTable
         contacts={page.contacts}
         nextCursor={page.nextCursor}
-        onAddContact={() => setOpen(true)}
+        total={resolvedTotal}
+        onAddContact={openCreate}
+        onEditContact={openEdit}
       />
 
-      <AddContactModal open={open} onClose={close} onCreated={created} />
-    </div>
+      <ContactModal
+        open={modalOpen}
+        mode={modalMode}
+        contact={modalMode === "edit" ? editingContact ?? undefined : undefined}
+        onClose={closeModal}
+        onSaved={saved}
+      />
+    </PageContainer>
   );
 }

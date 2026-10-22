@@ -18,7 +18,6 @@ export function isNavActive(pathname: string, item: NavItem): boolean {
 
 export function titleForPath(pathname: string): string {
   if (pathname.startsWith("/syncs")) return "Order syncs";
-  if (pathname.includes("/edit")) return "Edit contact";
   if (pathname.startsWith("/contacts")) return "Contacts";
   return "HubSpot Order Sync";
 }

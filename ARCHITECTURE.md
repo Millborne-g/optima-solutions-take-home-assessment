@@ -30,6 +30,8 @@ app → views → widgets → features → entities → shared
 4. Mark `processing`, upsert Contact, create Deal + association, persist IDs.
 5. Transient HubSpot errors go through `withRetry` (429 / 5xx).
 6. Failures land in `order_syncs` for `/syncs` Retry.
+7. `/syncs` lists recent rows from Supabase paginated (5 per page, `?page=` + optional `?q=` order ID search, Previous / Next).
+8. `/contacts` lists from HubSpot (optional `?q=` search) using cursors with a URL `history` stack so Previous / Next both work.
 
 ## Database
 

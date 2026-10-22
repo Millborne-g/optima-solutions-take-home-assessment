@@ -24,7 +24,9 @@ import {
   findByOrderId,
   markProcessing,
   updateSync,
-  listRecent,
+  listRecentPage,
+  countByStatus,
+  type SyncStatusCounts,
 } from "@/server/supabase/orderSyncsRepository";
 
 /**
@@ -250,8 +252,17 @@ export async function retryFailedSync(orderId: string): Promise<OrderSync | null
   return runSyncForRecord(orderId, payload, processing);
 }
 
-export async function listRecentSyncs(limit = 50): Promise<OrderSync[]> {
-  return listRecent(limit);
+export async function listRecentSyncsPage(
+  offset = 0,
+  limit = 5,
+  orderIdQuery?: string,
+): Promise<{ syncs: OrderSync[]; hasMore: boolean; total: number }> {
+  return listRecentPage(offset, limit, orderIdQuery);
 }
 
+export async function getSyncStatusCounts(): Promise<SyncStatusCounts> {
+  return countByStatus();
+}
+
+export type { SyncStatusCounts };
 export { findByOrderId };

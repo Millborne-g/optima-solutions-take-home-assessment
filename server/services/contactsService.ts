@@ -6,6 +6,8 @@ import type {
 } from "@/entities/contact/model/schema";
 import {
   listContacts,
+  searchContacts,
+  getContactsTotal,
   getContactById,
   searchContactByEmail,
   createContact,
@@ -33,6 +35,9 @@ import {
 // List contacts
 // ---------------------------------------------------------------------------
 
+/** HubSpot list page size for the Contacts dashboard (Prev/Next). */
+export const CONTACTS_PAGE_SIZE = 5;
+
 /**
  * Fetch a page of contacts from HubSpot and sync them to Supabase.
  *
@@ -40,7 +45,7 @@ import {
  */
 export async function getContacts(
   after?: string,
-  limit = 20,
+  limit = CONTACTS_PAGE_SIZE,
 ): Promise<ContactsPage> {
   const page = await listContacts(after, limit);
 
@@ -50,6 +55,28 @@ export async function getContacts(
   });
 
   return page;
+}
+
+/**
+ * Search HubSpot contacts by free-text query and sync matches to Supabase.
+ */
+export async function searchContactsPage(
+  query: string,
+  after?: string,
+  limit = CONTACTS_PAGE_SIZE,
+): Promise<ContactsPage> {
+  const page = await searchContacts(query, after, limit);
+
+  syncContactsToSupabase(page.contacts).catch((err) => {
+    console.error("[ContactsService] Background sync error:", err);
+  });
+
+  return page;
+}
+
+/** HubSpot portal contact total for nav badges / summary. */
+export async function getContactsCount(): Promise<number> {
+  return getContactsTotal();
 }
 
 async function syncContactsToSupabase(contacts: Contact[]): Promise<void> {

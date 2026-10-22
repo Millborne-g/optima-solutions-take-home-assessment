@@ -19,7 +19,7 @@ export type EditContactFormValues = {
 export function useEditContact(contactId: string) {
   const [state, setState] = useState<EditContactState>({ status: "idle" });
 
-  async function submit(values: EditContactFormValues) {
+  async function submit(values: EditContactFormValues): Promise<boolean> {
     setState({ status: "loading" });
 
     // Only send fields that have a value (partial update).
@@ -48,17 +48,21 @@ export function useEditContact(contactId: string) {
               ? data.error
               : `Request failed (${res.status})`,
         });
-        return;
+        return false;
       }
 
       if ("contact" in data) {
         setState({ status: "success", contact: data.contact });
+        return true;
       }
+
+      return false;
     } catch {
       setState({
         status: "error",
         message: "Network error. Please try again.",
       });
+      return false;
     }
   }
 

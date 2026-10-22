@@ -23,7 +23,8 @@ vi.mock("@/server/supabase/orderSyncsRepository", () => ({
   findByOrderId: vi.fn(),
   markProcessing: vi.fn(),
   updateSync: vi.fn(),
-  listRecent: vi.fn(),
+  listRecentPage: vi.fn(),
+  countByStatus: vi.fn(),
 }));
 
 vi.mock("@/server/lib/retry", () => ({

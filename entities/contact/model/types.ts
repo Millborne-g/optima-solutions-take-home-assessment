@@ -52,4 +52,6 @@ export type ContactsPage = {
   contacts: Contact[];
   /** Pass this value as `after` to fetch the next page. Null when no more pages. */
   nextCursor: string | null;
+  /** HubSpot search/list total when available (search API). */
+  total?: number | null;
 };

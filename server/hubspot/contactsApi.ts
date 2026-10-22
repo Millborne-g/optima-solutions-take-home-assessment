@@ -119,11 +119,11 @@ function translateError(err: any): never {
  *
  * @param after  Cursor from a previous `ContactsPage.nextCursor`. Pass
  *               `undefined` to start from the first page.
- * @param limit  Maximum results per page (1–100, default 20).
+ * @param limit  Maximum results per page (1–100, default 5).
  */
 export async function listContacts(
   after?: string,
-  limit = 20,
+  limit = 5,
 ): Promise<ContactsPage> {
   const client = getHubSpotClient();
   try {
@@ -135,10 +135,48 @@ export async function listContacts(
     );
     const contacts = (response.results ?? []).map(mapContact);
     const nextCursor = response.paging?.next?.after ?? null;
-    return { contacts, nextCursor };
+    return { contacts, nextCursor, total: null };
   } catch (err) {
     translateError(err);
   }
+}
+
+/**
+ * Search contacts by free-text query (name / email) with cursor pagination.
+ * HubSpot search returns a `total` suitable for badges and summary cards.
+ */
+export async function searchContacts(
+  query: string,
+  after?: string,
+  limit = 5,
+): Promise<ContactsPage> {
+  const client = getHubSpotClient();
+  const trimmed = query.trim();
+  try {
+    const response = await client.crm.contacts.searchApi.doSearch({
+      filterGroups: [],
+      properties: CONTACT_PROPERTIES,
+      limit,
+      after: after && after !== "" ? after : "0",
+      sorts: [],
+      query: trimmed,
+    });
+    const contacts = (response.results ?? []).map(mapContact);
+    const nextCursor = response.paging?.next?.after ?? null;
+    const total =
+      typeof response.total === "number" ? response.total : contacts.length;
+    return { contacts, nextCursor, total };
+  } catch (err) {
+    translateError(err);
+  }
+}
+
+/**
+ * Cheap HubSpot total for nav badges (search with empty query, limit 1).
+ */
+export async function getContactsTotal(): Promise<number> {
+  const page = await searchContacts("", undefined, 1);
+  return page.total ?? page.contacts.length;
 }
 
 /**

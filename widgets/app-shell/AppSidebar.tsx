@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ThemeToggle } from "@/shared/ui/ThemeToggle";
@@ -13,6 +14,11 @@ type AppSidebarProps = {
   onNavigate?: () => void;
 };
 
+type NavCounts = {
+  contacts: number | null;
+  syncs: number | null;
+};
+
 export function AppSidebar({
   mode,
   collapsed,
@@ -21,6 +27,67 @@ export function AppSidebar({
 }: AppSidebarProps) {
   const pathname = usePathname();
   const showLabels = mode === "drawer" || !collapsed;
+  const [counts, setCounts] = useState<NavCounts>({
+    contacts: null,
+    syncs: null,
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadCounts() {
+      try {
+        const [contactsRes, syncsRes] = await Promise.all([
+          fetch("/api/contacts?limit=1"),
+          fetch("/api/syncs?page=1&limit=1"),
+        ]);
+
+        let contacts: number | null = null;
+        let syncs: number | null = null;
+
+        if (contactsRes.ok) {
+          const data = (await contactsRes.json()) as {
+            total?: number | null;
+            contacts?: unknown[];
+          };
+          if (typeof data.total === "number") {
+            contacts = data.total;
+          } else if (Array.isArray(data.contacts)) {
+            contacts = data.contacts.length;
+          }
+        }
+
+        if (syncsRes.ok) {
+          const data = (await syncsRes.json()) as {
+            counts?: Record<string, number>;
+          };
+          if (data.counts) {
+            syncs = Object.values(data.counts).reduce(
+              (sum, n) => sum + (typeof n === "number" ? n : 0),
+              0,
+            );
+          }
+        }
+
+        if (!cancelled) {
+          setCounts({ contacts, syncs });
+        }
+      } catch {
+        // Badges are best-effort chrome.
+      }
+    }
+
+    void loadCounts();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  function badgeFor(href: string): number | null {
+    if (href === "/contacts") return counts.contacts;
+    if (href === "/syncs") return counts.syncs;
+    return null;
+  }
 
   return (
     <aside
@@ -63,6 +130,7 @@ export function AppSidebar({
         <ul className="space-y-1">
           {MAIN_NAV.map((item) => {
             const active = isNavActive(pathname, item);
+            const badge = badgeFor(item.href);
             return (
               <li key={item.href}>
                 <Link
@@ -80,7 +148,23 @@ export function AppSidebar({
                   aria-current={active ? "page" : undefined}
                 >
                   <NavIcon href={item.href} />
-                  {showLabels && <span>{item.label}</span>}
+                  {showLabels && (
+                    <>
+                      <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                      {badge != null && (
+                        <span
+                          className={cn(
+                            "inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[11px] font-semibold tabular-nums",
+                            active
+                              ? "bg-primary-foreground/15 text-primary-foreground"
+                              : "bg-surface-subtle text-muted-foreground",
+                          )}
+                        >
+                          {badge}
+                        </span>
+                      )}
+                    </>
+                  )}
                 </Link>
               </li>
             );
@@ -88,33 +172,63 @@ export function AppSidebar({
         </ul>
       </nav>
 
-      {mode === "desktop" && (
-        <div
-          className={cn(
-            "mt-auto flex items-center border-t border-border/60 px-4 py-3",
-            collapsed ? "flex-col gap-2 px-2" : "justify-between gap-2",
-          )}
-        >
-          <ThemeToggle
-            compact
-            className="border-transparent bg-transparent shadow-none hover:bg-surface-subtle"
+      <div
+        className={cn(
+          "mt-auto space-y-3 border-t border-border/60 px-4 py-3",
+          !showLabels && "px-2",
+        )}
+      >
+        {showLabels ? (
+          <div className="rounded-lg border border-border bg-surface-subtle px-3 py-2.5">
+            <div className="flex items-center gap-2">
+              <span
+                className="h-2 w-2 shrink-0 rounded-full bg-success"
+                aria-hidden="true"
+              />
+              <p className="text-sm font-medium text-foreground">
+                HubSpot connected
+              </p>
+            </div>
+            <p className="mt-0.5 pl-4 text-xs text-muted-foreground">
+              Webhook listening
+            </p>
+          </div>
+        ) : (
+          <div
+            className="mx-auto h-2.5 w-2.5 rounded-full bg-success"
+            title="HubSpot connected"
+            aria-label="HubSpot connected"
           />
-          {onToggleCollapse && (
-            <button
-              type="button"
-              onClick={onToggleCollapse}
-              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-              className={cn(
-                "inline-flex h-9 w-9 items-center justify-center rounded-md",
-                "text-muted-foreground hover:bg-surface-subtle hover:text-foreground",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring",
-              )}
-            >
-              <CollapseIcon collapsed={collapsed} />
-            </button>
-          )}
-        </div>
-      )}
+        )}
+
+        {mode === "desktop" && (
+          <div
+            className={cn(
+              "flex items-center",
+              collapsed ? "flex-col gap-2" : "justify-between gap-2",
+            )}
+          >
+            <ThemeToggle
+              compact
+              className="border-transparent bg-transparent shadow-none hover:bg-surface-subtle"
+            />
+            {onToggleCollapse && (
+              <button
+                type="button"
+                onClick={onToggleCollapse}
+                aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+                className={cn(
+                  "inline-flex h-9 w-9 items-center justify-center rounded-md",
+                  "text-muted-foreground hover:bg-surface-subtle hover:text-foreground",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring",
+                )}
+              >
+                <CollapseIcon collapsed={collapsed} />
+              </button>
+            )}
+          </div>
+        )}
+      </div>
     </aside>
   );
 }

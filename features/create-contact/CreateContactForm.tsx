@@ -66,15 +66,6 @@ export function CreateContactForm({
           >
             {onSuccess ? "Done" : "View all contacts"}
           </Button>
-          {!onSuccess && (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => router.push(`/contacts/${state.contact.id}/edit`)}
-            >
-              Edit contact
-            </Button>
-          )}
         </div>
       </div>
     );

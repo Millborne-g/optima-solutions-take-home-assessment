@@ -5,6 +5,8 @@ import {
 } from "@/entities/contact/model/schema";
 import {
   getContacts,
+  getContactsCount,
+  searchContactsPage,
   upsertContactByEmail,
 } from "@/server/services/contactsService";
 import {
@@ -19,15 +21,17 @@ import {
  *
  * Query params:
  *   after  - Pagination cursor (from a previous response's `nextCursor`)
- *   limit  - Number of contacts per page (1–100, default 20)
+ *   q      - Free-text HubSpot search (name / email)
+ *   limit  - Number of contacts per page (1–100, default 5)
  *
- * Response: { contacts: Contact[], nextCursor: string | null }
+ * Response: { contacts, nextCursor, total? }
  */
 export async function GET(request: NextRequest): Promise<Response> {
   const { searchParams } = request.nextUrl;
 
   const parseResult = listContactsQuerySchema.safeParse({
     after: searchParams.get("after") ?? undefined,
+    q: searchParams.get("q") ?? undefined,
     limit: searchParams.get("limit") ?? undefined,
   });
 
@@ -35,11 +39,27 @@ export async function GET(request: NextRequest): Promise<Response> {
     return badRequest(parseResult.error.issues[0]?.message ?? "Invalid query parameters");
   }
 
-  const { after, limit } = parseResult.data;
+  const { after, q, limit } = parseResult.data;
+  const query = q?.trim() ?? "";
 
   try {
-    const page = await getContacts(after, limit);
-    return ok(page);
+    if (query !== "") {
+      const page = await searchContactsPage(query, after, limit);
+      return ok(page);
+    }
+
+    const [page, total] = await Promise.all([
+      getContacts(after, limit),
+      // Cheap total for badges when listing (not searching).
+      limit <= 1 && !after
+        ? getContactsCount().catch(() => null)
+        : Promise.resolve(null),
+    ]);
+
+    return ok({
+      ...page,
+      total: total ?? page.total ?? null,
+    });
   } catch (err) {
     return handleServiceError(err);
   }
@@ -70,7 +90,6 @@ export async function POST(request: NextRequest): Promise<Response> {
 
   try {
     const result = await upsertContactByEmail(parseResult.data);
-    // Return 200 if updated (contact already existed), 201 if created.
     if (result.wasUpdated) {
       return ok(result);
     }

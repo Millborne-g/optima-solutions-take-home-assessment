@@ -156,11 +156,52 @@ Redelivery of a `failed` or stuck `processing` row **re-runs** the sync (idempot
 
 ---
 
+## Docker (app only)
+
+Runs the Next.js app in a container on port **3000**. **Does not** start Supabase or HubSpot — use your existing cloud project and Private App credentials in `.env.local` (migrations must already be applied in Supabase).
+
+1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or Docker Engine + Compose).
+2. Copy and fill env (same as local dev):
+
+   ```bash
+   cp .env.example .env.local
+   ```
+
+3. Compose uses `${NEXT_PUBLIC_*}` from a root `.env` file for **image build** args. Either copy once:
+
+   ```bash
+   cp .env.local .env
+   ```
+
+   or export those two variables in your shell before `docker compose build`.
+
+4. Build and run:
+
+   ```bash
+   docker compose build
+   docker compose up
+   ```
+
+5. Open http://localhost:3000 (`/contacts`, `/syncs`).
+
+**Webhook sender from the host** (container publishes `3000:3000`):
+
+```bash
+# In .env.local on the machine running the sender (optional; default is localhost:3000)
+WEBHOOK_URL=http://localhost:3000/api/webhooks/order
+npm run send-webhook -- ORD-DOCKER-1
+```
+
+Server-only secrets (`SUPABASE_SERVICE_ROLE_KEY`, `HUBSPOT_PRIVATE_APP_TOKEN`, `WEBHOOK_SIGNING_SECRET`, etc.) are loaded at **runtime** via `env_file: .env.local` — not baked into the image. Do not commit `.env` / `.env.local`.
+
+---
+
 ## How to run
 
 | Command | Purpose |
 |---|---|
 | `npm run dev` | Next.js app at http://localhost:3000 |
+| `docker compose up` | Production app in Docker (see above) |
 | `npm run send-webhook` | Signed mock order webhook |
 | `npm test` | Vitest unit tests |
 | `npm run test:python` | Python exporter unit tests (mocked API) |
@@ -173,9 +214,9 @@ Redelivery of a `failed` or stuck `processing` row **re-runs** the sync (idempot
 
 Pages:
 
-- `/contacts` — contacts list (Add contact opens a modal)
-- `/contacts/[id]/edit` — edit contact
-- `/syncs` — order sync dashboard
+- `/contacts` — HubSpot contacts list (5 per page; search `?q=`; add/edit modals; optional `?add=1` or `?edit=<hubspotId>`; cursor `?after=` + `history`; Previous / Next)
+- `/contacts/[id]/edit` — redirects to `/contacts?edit=<id>` (opens edit modal)
+- `/syncs` — order sync dashboard from Supabase (5 per page; `?page=` + optional `?q=` order ID; Previous / Next)
 
 ---
 
@@ -254,7 +295,7 @@ HUBSPOT_PRIVATE_APP_TOKEN=your_token python export_deals.py
 - Dashboard has no authentication (assessment scope).
 - No HubSpot-native webhook subscription (mock sender + shared secret instead).
 - PHP currency may need enabling in HubSpot account defaults.
-- With more time: BullMQ (or similar), webhook timestamp skew checks, n8n bonus workflow, Docker Compose.
+- With more time: BullMQ (or similar), webhook timestamp skew checks, n8n bonus workflow.
 
 ---
 

@@ -1,0 +1,16 @@
+node_modules
+.next
+.git
+.cursor
+documentation
+__tests__
+coverage
+.env
+.env.*
+!.env.example
+*.md
+!README.md
+terminals
+agent-transcripts
+.DS_Store
+Thumbs.db

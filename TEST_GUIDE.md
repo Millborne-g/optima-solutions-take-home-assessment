@@ -1,6 +1,6 @@
 # Test Guide
 
-Prereqs: `npm run dev` running, `.env.local` filled, migrations applied.
+Prereqs: app reachable at http://localhost:3000 (`npm run dev` **or** `docker compose up` after [`README.md` Docker section](README.md#docker-app-only)), `.env.local` filled, migrations applied on cloud Supabase.
 
 ```bash
 npm test
@@ -129,14 +129,35 @@ Then POST a signed body with `total: -1` or `event: "order.updated"`. Easier: au
 
 Pass: HTTP **400**. No HubSpot write.
 
-### 3. Failed sync + Retry
+### 3. Create a failed sync (then Retry)
 
-If a row is `failed` on `/syncs`:
+Invalid HMAC / bad payload do **not** create a `/syncs` row. A row is `failed` only after a **valid signed** webhook is accepted and HubSpot (or persist) throws.
 
-1. Click **Retry**
-2. Pass: status becomes `success` or stays `failed` with an error message. HubSpot IDs update if recovered.
+1. In `.env.local`, temporarily set a bad token (keep the real one somewhere safe):
+
+   ```bash
+   HUBSPOT_PRIVATE_APP_TOKEN=pat-invalid-for-failed-sync
+   ```
+
+2. Restart `npm run dev` so Next.js reloads env.
+
+3. Send a **new** order id:
+
+   ```bash
+   npm run send-webhook -- ORD-FAIL-1
+   ```
+
+   Pass: HTTP **200**, `alreadySeen: false`, `status: failed`. `/syncs` shows the row with an error and **Retry**.
+
+4. Restore the real `HUBSPOT_PRIVATE_APP_TOKEN` in `.env.local`, restart `npm run dev`.
+
+5. On `/syncs`, click **Retry** (or redeliver: `npm run send-webhook -- ORD-FAIL-1`).
+
+   Pass: status becomes `success` or stays `failed` with an error message. HubSpot IDs update if recovered.
 
 Retry is also enabled for stuck `processing`.
+
+Do not leave the invalid token in `.env.local` after the test. Do not commit `.env.local`.
 
 ### 4. Retry on success (must 409)
 

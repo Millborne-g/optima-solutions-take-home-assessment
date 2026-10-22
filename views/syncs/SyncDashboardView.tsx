@@ -1,24 +1,64 @@
+"use client";
+
+import { useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { OrderSync } from "@/entities/order/model/types";
 import { SyncTable } from "@/widgets/sync-table/SyncTable";
-import { SyncStatusSummary } from "@/widgets/sync-summary/SyncStatusSummary";
+import { DebouncedSearchField } from "@/shared/ui/DebouncedSearchField";
+import { PageContainer, PageHeader } from "@/shared/ui/PageContainer";
 
 type SyncDashboardViewProps = {
   syncs: OrderSync[];
+  page: number;
+  hasMore: boolean;
+  total: number;
+  query?: string;
   fetchError?: string | null;
 };
 
 export function SyncDashboardView({
   syncs,
+  page,
+  hasMore,
+  total,
+  query = "",
   fetchError,
 }: SyncDashboardViewProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const commitSearch = useCallback(
+    (next: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("after");
+      params.delete("page");
+      if (next === "") {
+        params.delete("q");
+      } else {
+        params.set("q", next);
+      }
+      const qs = params.toString();
+      router.push(qs ? `/syncs?${qs}` : "/syncs");
+    },
+    [router, searchParams],
+  );
+
   return (
-    <div className="mx-auto max-w-6xl min-w-0">
-      <header className="mb-6 hidden md:block">
-        <h1 className="text-2xl font-bold text-foreground">Order syncs</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Last 50 webhook sync attempts to HubSpot
-        </p>
-      </header>
+    <PageContainer>
+      <PageHeader
+        title="Order syncs"
+        description="Last webhook sync attempts to HubSpot"
+        actions={
+          <DebouncedSearchField
+            key={query || "__empty"}
+            className="md:ml-auto"
+            initialValue={query}
+            onCommit={commitSearch}
+            placeholder="Search order ID"
+            aria-label="Search order ID"
+          />
+        }
+      />
 
       {fetchError && (
         <div
@@ -29,9 +69,8 @@ export function SyncDashboardView({
         </div>
       )}
 
-      <SyncStatusSummary syncs={syncs} />
-
       <SyncTable
+        key={syncs.map((s) => s.orderId).join("|") || "empty"}
         initialSyncs={syncs.map((s) => ({
           orderId: s.orderId,
           status: s.status,
@@ -43,7 +82,10 @@ export function SyncDashboardView({
           createdAt: s.createdAt,
           updatedAt: s.updatedAt,
         }))}
+        page={page}
+        hasMore={hasMore}
+        total={total}
       />
-    </div>
+    </PageContainer>
   );
 }

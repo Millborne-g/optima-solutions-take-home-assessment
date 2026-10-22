@@ -63,11 +63,13 @@ Same component (`AppSidebar`) in both modes; layout differs by `mode` prop.
 │ [Mark] HubSpot Order Sync│  brand icon + wordmark
 │                           │  (icon only when collapsed)
 │ MAIN MENU                 │
-│   Contacts                │
-│   Order syncs             │
+│   Contacts          [n]   │  count badges
+│   Order syncs       [n]   │
 │         …scroll…          │
 ├─────────────────────────┤
-│ Theme (icon) │ Collapse │  minimal footer (desktop only)
+│ HubSpot connected         │  static status strip
+│ Millborne G. / Admin      │  static profile
+│ Theme (icon) │ Collapse │  desktop only
 └─────────────────────────┘
 ```
 
@@ -126,9 +128,9 @@ Same component (`AppSidebar`) in both modes; layout differs by `mode` prop.
 | Route | Page composition |
 |-------|------------------|
 | `/` | Redirect → `/contacts` |
-| `/contacts` | Contacts list + Add contact modal |
-| `/contacts/[id]/edit` | Edit contact form |
-| `/syncs` | Order sync status summary + table |
+| `/contacts` | Search + table; add/edit modals (`?q=`, `?add=1`, `?edit=<id>`; HubSpot cursors; Previous / Next) |
+| `/contacts/[id]/edit` | Redirect → `/contacts?edit=<id>` |
+| `/syncs` | Order ID search + table (`?page=`, `?q=`; Previous / Next) |
 
 Thin Next.js files under `app/*/page.tsx` compose FSD views from `views/`.
 
@@ -172,11 +174,9 @@ Breakpoint reference (Tailwind defaults used in shell):
 
 Principles already used in the product:
 
-- **Contacts / Syncs**: tables use horizontal containment (`min-w-0` / full width); status summary stacks 2×2 then 4 columns from `lg`.
+- **Contacts / Syncs**: tables use horizontal containment (`min-w-0` / full width).
 - Prefer `min-w-0` on flex children so nested tables do not force page-level horizontal scroll.
 - Modals: constrained height (`max-height` ~ viewport); body scrolls inside dialog when needed.
-- Status cards stay quiet (surface + light border + accent cue), not full tinted fills.
-
 ### 4.3 Interaction affordances
 
 | Affordance | Notes |

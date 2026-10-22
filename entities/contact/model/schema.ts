@@ -47,12 +47,13 @@ export const updateContactSchema = z
 
 export const listContactsQuerySchema = z.object({
   after: z.string().optional(),
+  q: z.string().optional(),
   limit: z.coerce
     .number()
     .int()
     .min(1)
     .max(100)
-    .default(20),
+    .default(5),
 });
 
 export type CreateContactInput = z.infer<typeof createContactSchema>;

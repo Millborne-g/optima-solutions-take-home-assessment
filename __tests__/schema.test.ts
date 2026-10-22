@@ -97,11 +97,11 @@ describe("updateContactSchema", () => {
 });
 
 describe("listContactsQuerySchema", () => {
-  it("defaults limit to 20", () => {
+  it("defaults limit to 5", () => {
     const result = listContactsQuerySchema.safeParse({});
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.limit).toBe(20);
+      expect(result.data.limit).toBe(5);
     }
   });
 
@@ -123,6 +123,14 @@ describe("listContactsQuerySchema", () => {
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.after).toBe("abc123");
+    }
+  });
+
+  it("accepts a search query", () => {
+    const result = listContactsQuerySchema.safeParse({ q: "brian" });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.q).toBe("brian");
     }
   });
 });
